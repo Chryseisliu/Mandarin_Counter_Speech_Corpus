@@ -1,22 +1,24 @@
 import re
-
 import pandas as pd
 from tqdm import tqdm
 import torch
 from transformers import pipeline, set_seed
 from openai import OpenAI
-import pandas as pd
+import multiprocessing
+from functools import partial
+import os
+
 # Set the seed for reproducibility
 set_seed(42)
 
 client = OpenAI(
     base_url="https://api-inference.huggingface.co/v1/",
-    api_key="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"
+    api_key="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"
 )
 
 def generate_text(
         prompt,
-        max_tokens=500,
+        max_tokens=25,
         temperature=0.7,
         top_p=1.0,
         frequency_penalty=0.0,
@@ -31,12 +33,12 @@ def generate_text(
     ]
 
     stream = client.chat.completions.create(
-        model="meta-llama/Llama-3.1-8B-Instruct",
+        model="meta-llama/Llama-3.1-70B-Instruct",
         messages=messages,
         max_tokens=20,
-        temperature=0.1,  # 控制随机性 (0-2)，越大越随机
-        top_p=0.9,  # 控制输出的多样性
-        frequency_penalty=0.3,  # 降低重复词的可能性
+        temperature=0,  # Control randomness (0-2), higher values make output more random
+        top_p=0.1,  # Control diversity of output
+        frequency_penalty=0.3,  # Decrease the likelihood of repeating words
         stream=True
     )
 
@@ -50,15 +52,8 @@ def generate_text(
     else:
         return stream.choices[0].message.content
 
-generator = lambda prompt, **kwargs: generate_text(prompt, **kwargs)
-
-
-
-
-
-
-def get_hate_score(HATE_SPEECH_TEXT, generator):
-    prompt = f"""Read the following hate speech definition and scoring criteria, then carefully evaluate the given text and provide a score between 0 and 100 that represents the level of prejudice and hate in the text.
+def get_hate_score(HATE_SPEECH_TEXT):
+    prompt = f"""Read the following hate speech definition, scoring criteria, and examples, then carefully evaluate the given text and provide a score between 0 and 100 that represents the level of prejudice and hate in the text.
 
 <hate_speech_definition>
 Hate speech refers to language that expresses prejudice against a person or group based on their race, ethnicity, national origin, religion, gender, sexual orientation, or other protected characteristics. It often involves the use of derogatory or dehumanizing language, stereotypes, and false claims about the abilities or worthiness of a particular group.
@@ -66,10 +61,10 @@ Hate speech refers to language that expresses prejudice against a person or grou
 
 
 <scoring_criteria>
-0 - No hate speech detected. The text does not express any prejudice or hatred towards a group.
+0 - No hate speech detected. The text does not express any prejudice or hatred towards a group or there is not enough context to tell which group of people is being targeted by the speaker.
 25 - Mild hate speech. The text contains some language that is mildly derogatory or stereotypical towards a group, but does not directly advocate for harm or discrimination.
 50 - Moderate hate speech. The text contains language that is clearly prejudiced and dehumanizing towards a group, and may express views that could lead to discrimination or harm.
-75 - Severe hate speech. The text contains language that is highly prejudiced, dehumanizing, and advocates for the mistreatment or harm of a protected group.
+75 - Severe hate speech. The text contains language that is highly prejudiced, dehumanizing, and advocates for the mistreatment or harm of a protected group or strongly talks negatively of someone's race, ethnicity, national origin, religion, gender, sexual orientation, or other protected characteristics. It often involves the use of derogatory or dehumanizing language, stereotypes, and false claims about the abilities or worthiness of a particular group.
 100 - Extreme hate speech. The text contains language that is overtly hateful, dehumanizing, and promotes violence or discrimination against a protected group.
 </scoring_criteria>
 
@@ -82,35 +77,39 @@ Example 2:
 只要有一个男人是坏的，所有男人都不是好东西？
 Score:
 0
-Example 2:
+Example 3:
+一位黑人被人打死了
+Score:
+0
+Example 4:
 男的真恶心
 Score:
 25
-Example 2:
+Example 5:
 貌似江浙沪一起歧视安徽人……
 Score:
 30
-Example 3:
+Example 6:
 你素质差能不让东北人背锅吗？就因为你这样的人东北人天天被骂。
 Score:
 50
-Example 4:
+Example 7:
 现在广州大部分还是第一代原生态黑人，他们没有受过中华文明教育，长的也不美。
 Score:
 50
-Example 4:
+Example 8:
 这种女人就是傻逼
 Score:
 60
-Example 4:
+Example 9:
 我就不明白美国不能歧视黑人，为啥就能随便歧视亚裔
 Score:
 75
-Example 5:
+Example 10:
 非洲黑人智商70，被学者归类为智障水平。美国黑人混血儿智商85，中非混血儿智商应该徘徊在90左右，妥妥的班里倒数。
 Score:
 100
-Example 6:
+Example 10:
 只有资本家才能入犹太教当犹太人
 Score:
 100
@@ -120,7 +119,11 @@ When evaluating the given text, consider the following:
 - The specific language used and its level of prejudice or dehumanization
 - The context in which the language is used and any underlying biases or beliefs it may reflect
 - The potential impact the language could have on the targeted group or on society as a whole
-
+- If it unfairly criticizes a person's race, sex, gender, ethnicity, sexual orientation, or a personal aspect of their life. 
+- Refer  to the examples.
+- Give higher scores to text that explicitly mentions anything personal like sex, marriage, income, intelligence, or any other human trait.
+- If the person is not hateful towards the group and is speaking factually, then give it an automatic score of 0.
+- If there is not enough context to determine who the writer hates, then give it a 0.
 After carefully evaluating the text, provide a score between 0 and 100 that represents the level of prejudice and hate expressed. Be sure to provide a brief explanation for your score.
 
 <text>
@@ -130,21 +133,29 @@ After carefully evaluating the text, provide a score between 0 and 100 that repr
 Score:"""
 
     try:
-        result = generator(prompt)
-        score = result.split("New sentence:")[-1].strip()
-        return score
-    except:
-        return "Error"
+        result = generate_text(prompt)
+        # Extract the numeric score from the result
+        # Assuming the score is the first number in the result
+        score_match = re.search(r'(\d+)', result)
+        if score_match:
+            numeric_score = float(score_match.group(1))
+        else:
+            # If no score found, default to 0
+            numeric_score = 0.0
+        return numeric_score
+    except Exception as e:
+        print("Was not able to process the given text:", HATE_SPEECH_TEXT, "| \nError:", e)
+        return 0.0
 
-
-def extract_last_column_as_list(file_path, output_file=None,start_row=None):
+def extract_last_column_as_list(file_path, start_row=0, end_row=None):
     """
     Reads a CSV file with variable-length rows, extracts the last column from each row
-    using regex, and stores the results in a Python list. Optionally saves the result to a file.
+    using regex, and stores the results in a Python list.
 
     Parameters:
     - file_path (str): Path to the input CSV file.
-    - output_file (str, optional): Path to save the output as a text file. Defaults to None.
+    - start_row (int): Row number to start reading from.
+    - end_row (int, optional): Row number to stop reading at.
 
     Returns:
     - list: A list containing the extracted last column values.
@@ -152,23 +163,14 @@ def extract_last_column_as_list(file_path, output_file=None,start_row=None):
     last_column_list = []
 
     with open(file_path, 'r', encoding='utf-8') as file:
-        for line in file:
+        lines = file.readlines()[start_row:end_row]
+        for line in lines:
             # Use regex to extract the last column value
             match = re.findall(r'([^,]+)$', line.strip())
             if match:
                 last_column_list.append(match[0])
 
-    # Save the list to a file if output_file is specified
-    if output_file:
-        with open(output_file, 'w', encoding='utf-8') as f:
-            for item in last_column_list:
-                f.write(item + '\n')
-
-    if start_row:
-        last_column_list = last_column_list[start_row:]
-
     return last_column_list
-
 
 def list_to_df(data_list):
     """
@@ -184,31 +186,57 @@ def list_to_df(data_list):
     df = pd.DataFrame(data_list, columns=['text'], dtype=str)
     return df
 
+def process_chunk(chunk_data):
+    """
+    Processes a chunk of data by applying the hate speech scoring function.
 
-def load_data(input_file, start_row=1, end_row=None):
-    rows=extract_last_column_as_list(input_file,start_row=start_row)
-    df = list_to_df(rows)
-    return df
+    Parameters:
+    - chunk_data (pd.DataFrame): DataFrame containing the text data.
 
+    Returns:
+    - pd.DataFrame: DataFrame with an additional 'hate_score' column.
+    """
+    chunk_data['hate_score'] = chunk_data['text'].apply(get_hate_score)
+    return chunk_data
 
-def process_hate_speech(input_file, output_file, generator, start_row=None, end_row=None):
-    # 加载数据
-    df = load_data(input_file, start_row, end_row)
-    tqdm.pandas(desc="处理进度")
-    df['hate_score'] = df['text'].progress_apply(
-        lambda x: get_hate_score(x, generator)
+def process_hate_speech(input_file, output_file, chunk_size=100):
+    # Load data
+    data_list = extract_last_column_as_list(input_file)
+
+    # Split data into chunks
+    chunks = [data_list[i:i + chunk_size] for i in range(0, len(data_list), chunk_size)]
+
+    # Prepare for multiprocessing
+    pool = multiprocessing.Pool(processes=os.cpu_count()*4)
+
+    # Initialize progress bar
+    pbar = tqdm(total=len(chunks), desc="Overall Progress")
+
+    results = []
+    for chunk in chunks:
+        df_chunk = list_to_df(chunk)
+        results.append(pool.apply_async(process_chunk, args=(df_chunk,), callback=lambda _: pbar.update(1)))
+
+    pool.close()
+    pool.join()
+    pbar.close()
+
+    # Combine results
+    processed_chunks = [r.get() for r in results]
+    df_result = pd.concat(processed_chunks, ignore_index=True)
+
+    # Save results
+    df_result[['text', 'hate_score']].to_csv(output_file, index=False)
+    print(f"Processing complete. Results saved to {output_file}")
+
+# Example usage
+if __name__ == "__main__":
+    hs='成为家族耻辱？？？？b站里嫁到中国的高种姓女人可不服。。。。。'
+    result=get_hate_score(hs)
+    print(result)
+    exit()
+    process_hate_speech(
+        input_file="unfiltered_original_data/combined_preprocessed-3.csv",
+        output_file="hate_score_results3.csv",
+        chunk_size=20  # Process 100 lines per chunk
     )
-    # 保存结果
-    df[['text', 'hate_score']].to_csv(output_file, index=False)
-    print(f"处理完成，结果已保存到 {output_file}")
-
-    # 处理前10行数据
-
-
-process_hate_speech(
-    input_file="test.csv",
-    output_file="hate_score_results.csv",
-    generator=lambda prompt, **kwargs: generate_text(prompt, **kwargs),
-    start_row=0,
-    end_row=10
-)
