@@ -8,7 +8,7 @@ def generate_frequent_word_list(
     language: str = 'english',
     output_path: str=None,
     limit: int = 20000,
-    min_length: int = 5,
+    min_length: int = 1,
     max_length: int = 20,
     exclude_proper_nouns: bool = True,
     exclude_punctuation: bool = True,
@@ -40,7 +40,8 @@ def generate_frequent_word_list(
         'english': {'corpus': 'brown', 'fileid': None},
         'spanish': {'corpus': 'cess_esp', 'fileid': None},
         'italian': {'corpus': 'udhr', 'fileid': 'Italian-Latin1'},
-        'basque': {'corpus': 'conll2007', 'fileid': 'eus.train'}
+        'basque': {'corpus': 'conll2007', 'fileid': 'eus.train'},
+        'chinese': {'corpus': 'udhr', 'fileid': 'Chinese_Mandarin-GB2312'}
     }
 
     if language not in corpus_map:
@@ -134,7 +135,7 @@ def generate_frequent_word_list(
 
 # Main function for generating and displaying the top 10 frequent words for each language
 if __name__ == "__main__":
-    languages = ['english', 'spanish', 'italian', 'basque']
+    languages = ['chinese']
     for language in languages:
         output_path = f"{language}_frequent_word_list.json"
         print(f"\nGenerating frequent word list for {language}...")
