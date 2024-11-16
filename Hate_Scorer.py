@@ -93,38 +93,54 @@ Example 6:
 Score:
 0
 Example 7:
+路上看到女的性冷淡，你就可以强奸了？
+Score:
+0
+Example 8:
 貌似江浙沪一起歧视安徽人……
 Score:
 30
-Example 8:
+Example 9:
 你素质差能不让东北人背锅吗？就因为你这样的人东北人天天被骂。
 Score:
 50
-Example 9:
+Example 10:
 现在广州大部分还是第一代原生态黑人，他们没有受过中华文明教育，长的也不美。
 Score:
 50
-Example 10:
+Example 11:
+兄弟，我是高级黑啊，这年头还有谁歧视黑人啊？
+Score:
+60
+Example 12:
 这种女人就是傻逼
 Score:
 60
-Example 11:
+Example 13:
+你们怎么做到不歧视黑人的呢？
+Score:
+60
+Example 14:
 屌丝的女神，富人的精盆，大家都知道
 Score:
 75
-Example 12:
+Example 15:
+被日本讨厌不是坏事，坏人做了坏事心虚怕被清算不正常吗？
+Score:
+75
+Example 16:
 只要不来中国的外国人就是好外国人[机智]
 Score:
 80
-Example 13:
+Example 17:
 我就不明白美国不能歧视黑人，为啥就能随便歧视亚裔
 Score:
 75
-Example 14:
+Example 18:
 非洲黑人智商70，被学者归类为智障水平。美国黑人混血儿智商85，中非混血儿智商应该徘徊在90左右，妥妥的班里倒数。
 Score:
 100
-Example 15:
+Example 19:
 只有资本家才能入犹太教当犹太人
 Score:
 100
@@ -140,6 +156,7 @@ When evaluating the given text, consider the following:
 - If the person is not hateful towards the group and is speaking factually, then give it an automatic score of 0.
 - If there is not enough context to determine who the writer hates, then give it a 0.
 - Give a higher score if any slurs were used.
+- If it is asking a rhetorical question where the answer goes against hatining a group, then give it a score of 0.
 After carefully evaluating the text, provide a score between 0 and 100 that represents the level of prejudice and hate expressed. Be sure to provide a brief explanation for your score.
 
 <text>
@@ -247,12 +264,12 @@ def process_hate_speech(input_file, output_file, chunk_size=100):
 
 # Example usage
 if __name__ == "__main__":
-    # hs='小补充一点，黑人骂黑人n*ger没问题，其他人种不行。'
+    # hs='被日本讨厌不是坏事，坏人做了坏事心虚怕被清算不正常吗？'
     # result=get_hate_score(hs)
     # print(result)
     # exit()
     process_hate_speech(
         input_file="unfiltered_original_data/combined_preprocessed-2.csv",
         output_file="Test_Data/hate_score_results2.csv",
-        chunk_size=10  # Process 10 lines per chunk
+        chunk_size=8  # Process 10 lines per chunk
     )
