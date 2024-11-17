@@ -7,7 +7,7 @@ class LLMAnswerGenerator:
 
 
     def __init__(self):
-        self.TOKEN = "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"
+        self.TOKEN = "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"
         self.clients = {
             "Hermes": InferenceClient(
                 "NousResearch/Hermes-3-Llama-3.1-8B",
