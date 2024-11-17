@@ -229,7 +229,7 @@ def simulatedAnnealingSearchStep(
                 new_answers = future.result()
                 filtered=[]
                 for answer in list(set(new_answers)):
-                    if len(answer)<180 and len(answer)>len(" <ANSWER> "):
+                    if len(answer)<150 and len(answer)>len(" <ANSWER>"):
                         filtered.append(answer)
                 generated_answers.extend(filtered)
             except Exception as exc:
@@ -297,6 +297,8 @@ def simulatedAnnealing(
             if current_score<1:
                 current_score=1
             current_score=math.log(current_score, scoreWeighting)-0.5
+            if current_score<1:
+                current_score=0
             # Prepare arguments as a tuple
             args = (
                 question,
