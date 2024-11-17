@@ -4,6 +4,7 @@ from typing import List, Dict, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 
+from advercialModel.DataScrubber import scrub_chinese_string_answers, similarity_remove_string_dict
 from advercialModel.JudgeLMinterface import JudgeLMEvaluator
 from advercialModel.LLMAnswerGenerator import LLMAnswerGenerator
 from advercialModel.WordList import generate_frequent_word_list
@@ -119,7 +120,7 @@ def generate_new_answers(answer: str, prompt: str) -> List[str]:
     parsed_answers_random = llmAnswerGenerator.parse_answers(random_response)
 
     min_length = len("<ANSWER>")*2
-    max_length = 100
+    max_length = 150
 
     filtered_answers = [s for s in parsed_answers_random if min_length < len(s) < max_length]
 
@@ -228,14 +229,16 @@ def simulatedAnnealingSearchStep(
                 new_answers = future.result()
                 filtered=[]
                 for answer in list(set(new_answers)):
-                    if len(answer)<150 and len(answer)>len(" <ANSWER> "):
+                    if len(answer)<180 and len(answer)>len(" <ANSWER> "):
                         filtered.append(answer)
                 generated_answers.extend(filtered)
             except Exception as exc:
                 print(f'Answer generation for "{ans}" generated an exception: {exc}')
 
+    filtered_new_answers=scrub_chinese_string_answers(generated_answers)
+
     # Step 6: Score the new answers
-    answer_scores_new = calculate_scores(generated_answers, question, "")
+    answer_scores_new = calculate_scores(filtered_new_answers, question, "")
 
     # Step 7: Weight the new scores exponentially
     weighted_scores_new = generateExponentialWeightedScores(answer_scores_new, scoreWeighting)
@@ -327,7 +330,8 @@ def simulatedAnnealing(
         print_words(newPossibleAffixes, scoreWeighting)
 
         number_to_save = numAnswersToGenerateForEachLoop if i + 1 < maxIterations else 20
-        currentPossibleAffixes = probabilistic_selection(newPossibleAffixes, number_to_save)
+        trimmed_possible_affixes=similarity_remove_string_dict(newPossibleAffixes)
+        currentPossibleAffixes = probabilistic_selection(trimmed_possible_affixes, number_to_save)
         print(f"FINISHED ITERATION #{i}")
         print_words(currentPossibleAffixes, scoreWeighting)
         print("\n--------------------------------\n\n")
@@ -341,7 +345,7 @@ def findBestCounterSpeech(
     iterations: int = 20,
     numAICallsPerAILoop: int = 5,
     generateAiAnswersPeriod: int = 2,
-    threads = None  # Number of threads
+    threads = 32  # Number of threads
 ) -> List[List]:
     """
     Find the best counter-speech response based on the provided hate speech and language.
