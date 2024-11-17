@@ -135,7 +135,7 @@ class JudgeLMEvaluator:
                         prompt=conv.prompt
                     ) + conv.appendix
                 )
-            print("DATA SAMPLE:\n", data_sample)
+            #print("DATA SAMPLE:\n", data_sample)
 
             # Tokenize input and get tensors
             encoding = tokenizer([data_sample], return_tensors='pt')
@@ -189,7 +189,7 @@ class JudgeLMEvaluator:
             test_question["output1"] = output1
             test_question["output2"] = output2
 
-            print(f"Generated Output: {output}")
+            #print(f"Generated Output: {output}")
             print(f"Output1: {output1}, Output2: {output2}")
 
             if if_reverse_answers:
