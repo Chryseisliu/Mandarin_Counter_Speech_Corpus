@@ -15,3 +15,4 @@ transformers
 sentencepiece
 bitsandbytes
 jieba
+scipy
