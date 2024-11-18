@@ -46,7 +46,6 @@ Rephrase the provided sentence "{SENTENCE}" in a way that is:
 4. Detailed and comprehensive, providing additional context or elaboration where appropriate
 5. Use Conversational Chinese Characters
 6. Be supportive of women and minorities
-8. Add 1-2 chinese emojis between words showing support throughout 
 </Task>
 <Thinking>
 To accomplish this task, I will:

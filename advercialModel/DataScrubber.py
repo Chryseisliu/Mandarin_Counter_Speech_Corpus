@@ -34,7 +34,7 @@ def similarity_remove(strings, min_hamming_distance):
 
 
 
-def similarity_remove_string_dict(data:dict[str:int], min_hamming_distance_ratio=0.5):
+def similarity_remove_string_dict(data:dict[str:int], min_hamming_distance_ratio=0.4):
     """
     Remove strings from a dictionary until all remaining strings
     have a Hamming distance of at least min_hamming_distance.
@@ -72,7 +72,7 @@ def similarity_remove_string_dict(data:dict[str:int], min_hamming_distance_ratio
 
     return filtered_data
 
-def remove_non_chinese_answers(strings,min_ratio_to_remove=0.7):
+def remove_non_chinese_answers(strings,min_ratio_to_remove=0.5):
     """
     Removes strings that have a ratio of a-zA-Z characters to the total number of characters greater than 0.5.
 
@@ -90,7 +90,7 @@ def remove_non_chinese_answers(strings,min_ratio_to_remove=0.7):
             filtered_strings.append(s)
     return filtered_strings
 
-def scrub_chinese_string_answers(string_list:list[str],min_hamming_distance=5)->list[str]:
+def scrub_chinese_string_answers(string_list:list[str],min_hamming_distance=6)->list[str]:
     chinese_answers =remove_non_chinese_answers(string_list)
     result=similarity_remove(chinese_answers,min_hamming_distance=min_hamming_distance)
     return result

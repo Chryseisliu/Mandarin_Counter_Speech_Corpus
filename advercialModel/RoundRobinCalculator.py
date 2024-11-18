@@ -203,17 +203,20 @@ class EvaluatorClass:
 if __name__ == "__main__":
     # Example usage
     input_files = [
-        "../split_output/output_filtered_hate_score_results_chunk_7.csv",
-        "../split_output/output_filtered_hate_score_results_chunk_8.csv",
+        "../split_output/output_filtered_hate_score_results_chunk_13.csv",
+        "../split_output/output_filtered_hate_score_results_chunk_14.csv",
     ]
-    output_file = "rankedOutputToBeGraded/7-8.csv"
+    output_file = "rankedOutputToBeGraded/13-14.csv"
 
     evaluator_class = EvaluatorClass()
     evaluator_class.process_csv_files(input_files, output_file)
-    exit()
+
     input_files = [
-        "../split_output/output_filtered_hate_score_results_chunk_1.csv",
-        "../split_output/output_filtered_hate_score_results_chunk_2.csv",
+        "../split_output/output_filtered_hate_score_results_chunk_3.csv",
+        "../split_output/output_filtered_hate_score_results_chunk_6.csv",
     ]
-    output_file = "rankedOutputToBeGraded/1-2.csv"
+    output_file = "rankedOutputToBeGraded/3-6.csv"
     evaluator_class.process_csv_files(input_files, output_file)
+
+
+    exit()
