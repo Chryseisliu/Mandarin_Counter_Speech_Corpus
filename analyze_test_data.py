@@ -73,7 +73,7 @@ def plot_counts(counts, x_values, y_values):
     min_count = counts.min()
 
     # Define levels and colors
-    levels = [min_count, 1500, 5000, max_count]
+    levels = [min_count, 500, 3000, max_count]
     colors_list = ['red', 'green', 'yellow']
 
     # Adjust levels and colors if max_count is less than 5000
@@ -104,13 +104,13 @@ def plot_new_metric(metric, x_values, y_values):
     X, Y = np.meshgrid(x_values, y_values, indexing='ij')
     Z = metric
 
-    plt.figure(figsize=(10, 8))
+    plt.figure(figsize=(6, 5))
     # Use a colormap that highlights differences
     contour = plt.contourf(X, Y, Z, levels=50, cmap='plasma')
-    plt.colorbar(contour, label='New Metric Value')
+    plt.colorbar(contour, label='Metric Value')
     plt.xlabel('Minimum Text Length (x)')
     plt.ylabel('Minimum Hate Score (y)')
-    plt.title('Metric: log(Avg Hate Score) * log(Avg Text Length) * log(Num Lines)')
+    plt.title('Metric: log(Avg Hate Score) * log(Avg Text Length) * Num Lines')
 
     # Find the indices of the maximum value
     max_idx = np.unravel_index(np.nanargmax(Z), Z.shape)
