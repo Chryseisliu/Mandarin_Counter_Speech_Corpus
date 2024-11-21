@@ -1,7 +1,7 @@
 import pandas as pd
 from itertools import combinations
 from typing import List, Tuple
-import numpy as np
+
 
 from advercialModel.JudgeLMinterface import JudgeLMEvaluator
 
@@ -117,7 +117,8 @@ def group_responses(df: pd.DataFrame) -> dict:
     return response_dict
 
 
-def rank_responses(evaluator: EvaluatorClass, hate_speech: str, responses: List[str]) -> List[str]:
+def rank_responses(evaluator: EvaluatorClass, hate_speech: str, responses: List[str], user_response: str) -> Tuple[
+    List[str], int]:
     """
     Ranks the responses using roundRobinCalculator.
 
@@ -125,27 +126,44 @@ def rank_responses(evaluator: EvaluatorClass, hate_speech: str, responses: List[
         evaluator (EvaluatorClass): Instance of EvaluatorClass.
         hate_speech (str): The hate speech content.
         responses (List[str]): List of responses to rank.
+        user_response (str): The user's response.
 
     Returns:
-        List[str]: Responses sorted from highest to lowest score.
+        Tuple[List[str], int]: Responses sorted from highest to lowest score and user response rank.
     """
+    # Check if user response is in generated responses
+
     try:
         scored_responses = evaluator.roundRobinCalculator(hate_speech, responses)
         # Extract only the responses in sorted order
         ranked_responses = [resp for resp, score in scored_responses]
-        return ranked_responses
+        # Determine user response rank
+        if user_response in ranked_responses:
+            user_rank = ranked_responses.index(user_response) + 1
+        else:
+            # Include user response in ranking
+            responses_with_user = responses + [user_response]
+            # Remove duplicates
+            responses_with_user = list(set(responses_with_user))
+            # Re-run ranking including user response
+            scored_responses = evaluator.roundRobinCalculator(hate_speech, responses_with_user)
+            ranked_responses = [resp for resp, score in scored_responses]
+            user_rank = ranked_responses.index(user_response) + 1 if user_response in ranked_responses else None
+        return ranked_responses, user_rank
     except Exception as e:
         print(f"Error ranking responses for hate speech '{hate_speech}': {e}")
-        return responses  # Return original order if ranking fails
+        return responses, None  # Return original order if ranking fails
 
 
-def create_output_dataframe(hate_speech: str, user_response: str, ranked_responses: List[str]) -> pd.DataFrame:
+def create_output_dataframe(hate_speech: str, user_response: str, user_rank: int,
+                            ranked_responses: List[str]) -> pd.DataFrame:
     """
     Creates a DataFrame for the output CSV.
 
     Args:
         hate_speech (str): The hate speech content.
         user_response (str): The user's response.
+        user_rank (int): The rank of the user's response.
         ranked_responses (List[str]): Ranked list of responses.
 
     Returns:
@@ -154,8 +172,7 @@ def create_output_dataframe(hate_speech: str, user_response: str, ranked_respons
     data = {
         'hateSpeech': [hate_speech],
         'userEnteredResponse': [user_response],
-        'userEnteredResponseRank': [
-            ranked_responses.index(user_response) + 1 if user_response in ranked_responses else None],
+        'userEnteredResponseRank': [user_rank],
         'GeneratedResponse1': [ranked_responses[0] if len(ranked_responses) > 0 else None],
         'GeneratedResponse2': [ranked_responses[1] if len(ranked_responses) > 1 else None],
         'GeneratedResponse3': [ranked_responses[2] if len(ranked_responses) > 2 else None],
@@ -179,12 +196,26 @@ def rank_scored_answers(input_file: str, output_file: str):
 
     for hate_speech, responses in response_dict.items():
         print(f"Processing hate speech: {hate_speech}")
-        # Limit to a maximum of 5 responses for performance
-        if len(responses) > 5:
-            responses = responses[:5]
-        ranked_responses = rank_responses(evaluator, hate_speech, responses)
         user_response = df_filtered[df_filtered['hateSpeech'] == hate_speech]['userEnteredResponse'].iloc[0]
-        output_df = create_output_dataframe(hate_speech, user_response, ranked_responses)
+        # Limit to a maximum of 5 responses for performance
+
+
+        if len(responses) < 5 and user_response != '':
+            # Get the rank of the user response in the generated responses
+            user_rank = responses.index(user_response) + 1
+            ranked_responses = responses
+            print(f"User response is in generated responses. Assigned rank {user_rank}.")
+        else:
+            # Include user response in the list if not already present
+            if user_response not in responses and user_response != '':
+                responses_with_user = responses + [user_response]
+            else:
+                responses_with_user = responses
+            # Remove duplicates
+            responses_with_user = list(set(responses_with_user))
+            # Rank the responses
+            ranked_responses, user_rank = rank_responses(evaluator, hate_speech, responses_with_user, user_response)
+        output_df = create_output_dataframe(hate_speech, user_response, user_rank, ranked_responses)
         output_dfs.append(output_df)
 
     # Concatenate all DataFrames and save to CSV
@@ -195,6 +226,6 @@ def rank_scored_answers(input_file: str, output_file: str):
 
 if __name__ == "__main__":
     # Example usage
-    input_file = "./humanProcessed/testing.xlsx"
-    output_file = "ranked_output.csv"
+    input_file = "./humanProcessed/4-5_scored.xlsx"
+    output_file = "./comparedHumanAnswers/4-5_scored.csv"
     rank_scored_answers(input_file, output_file)
