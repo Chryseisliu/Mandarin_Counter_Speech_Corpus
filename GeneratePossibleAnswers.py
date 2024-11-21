@@ -79,14 +79,15 @@ def GenerateAnswersFromCSV(input_csv_path: str, output_csv_path: str, sampleSize
 
 if __name__ == "__main__":
     # Define paths for testing
-    input_csv_path = "test.csv"
-    output_csv_path = "testout.csv"
+
+    input_csv_path = "split_input/filtered_hate_score_results_chunk_3.csv"
+    output_csv_path = "split_output/output_filtered_hate_score_results_chunk_3.csv"
 
     # Run the function on the test data
     GenerateAnswersFromCSV(
         input_csv_path=input_csv_path,
         output_csv_path=output_csv_path,
-        sampleSize=10,
-        iterations=12,
-        numAICallsPerAILoop=6
+        sampleSize=20,
+        iterations=16,
+        numAICallsPerAILoop=7
     )
